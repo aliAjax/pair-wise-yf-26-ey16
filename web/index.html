@@ -1,7 +1,15 @@
 <!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>数字档案长期保存</title>
-<style>body{font:16px system-ui;max-width:980px;margin:32px auto;padding:0 16px}input,textarea,button,select{font:inherit;padding:8px;margin:4px}textarea{width:100%;height:110px}.panel{border:1px solid #bbb;padding:16px;border-radius:8px;margin:12px 0}pre{background:#f4f4f4;padding:12px;white-space:pre-wrap}</style></head>
+<style>body{font:16px system-ui;max-width:980px;margin:32px auto;padding:0 16px}input,textarea,button,select{font:inherit;padding:8px;margin:4px}textarea{width:100%;height:110px}.panel{border:1px solid #bbb;padding:16px;border-radius:8px;margin:12px 0}pre{background:#f4f4f4;padding:12px;white-space:pre-wrap}.ok{color:#1a7f37}.bad{color:#b42318}</style></head>
 <body><h1>数字档案长期保存</h1><p>演示账号：owner、archivist、auditor、outsider。请求使用 <code>X-User-Id</code>。</p>
 <section class="panel"><select id="user"><option>owner</option><option>archivist</option><option>auditor</option><option>outsider</option></select>
-<button onclick="loadStatus()">查看档案状态</button><pre id="out"></pre></section>
-<p>详细接口见 README。页面用于完成初始化后的状态检查，核心流程由 JSON API 提供。</p>
-<script>const out=document.querySelector("#out"),user=document.querySelector("#user");async function loadStatus(){const id=prompt("档案 ID","1");const r=await fetch(`/api/archives/${id}/status`,{headers:{"X-User-Id":user.value}});out.textContent=JSON.stringify(await r.json(),null,2)}</script></body></html>
+<button onclick="loadStatus()">查看档案状态</button><button onclick="loadVersion()">查看版本与副本</button><pre id="out"></pre></section>
+<p>保护状态按独立保管域计数：同一域只算一份，校验过期或待确认的副本不计入。详细接口见 README。</p>
+<script>const out=document.querySelector("#out"),user=document.querySelector("#user");
+async function loadStatus(){const id=prompt("档案 ID","1");const r=await fetch(`/api/archives/${id}/status`,{headers:{"X-User-Id":user.value}});const d=await r.json();
+const p=d.protection||{};let html=`保护要求：${p.required_domains} 个独立保管域（校验有效期 ${p.verify_max_age_days} 天，修订 ${p.revision}）\n`;
+html+=`受保护版本：<span class="ok">${p.protected}</span>　未受保护：<span class="bad">${p.unprotected}</span>\n\n`;
+html+=JSON.stringify(d,null,2);out.textContent=html}
+async function loadVersion(){const id=prompt("版本 ID","1");const r=await fetch(`/api/versions/${id}`,{headers:{"X-User-Id":user.value}});const d=await r.json();
+let html=`版本 ${d.version.version}　保护状态：${d.version.protected?'受保护':'未受保护'}\n副本：\n`;
+for(const c of d.copies){html+=`  #${c.id} ${c.location} 域=${c.domain} 状态=${c.state} 最近校验=${c.last_verified_at||'—'}\n`}
+html+=`\n${JSON.stringify(d,null,2)}`;out.textContent=html}</script></body></html>
